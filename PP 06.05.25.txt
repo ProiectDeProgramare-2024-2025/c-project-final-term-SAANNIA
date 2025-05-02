@@ -1,0 +1,277 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#define CLEAR_COMMAND "cls"
+#else
+#include <unistd.h>
+#define CLEAR_COMMAND "clear"
+#endif
+
+#define MAX_LENGTH 500
+
+#define RED     "\033[1;31m"
+#define GREEN   "\033[1;32m"
+#define YELLOW  "\033[1;33m"
+#define BLUE    "\033[1;34m"
+#define RESET   "\033[0m"
+
+
+int esteValidNumeSauPrenume(const char* s) {
+    for (int i = 0; s[i]; i++) {
+        if (!isalpha(s[i])) return 0;
+    }
+    return strlen(s) > 0;
+}
+
+int esteTextValid(const char* s) {
+    for (int i = 0; s[i]; i++) {
+        if (!isspace(s[i])) return 1;
+    }
+    return 0;
+}
+
+
+typedef struct {
+    char nume[50];
+    char prenume[50];
+    char telefon[20];
+    char experienta[200];
+} CV;
+
+
+void afiseazaCVs();
+
+void clearScreen() {
+    system(CLEAR_COMMAND);
+}
+
+void adaugaCV() {
+    clearScreen();
+    CV cv;
+
+    printf("=== Adauga CV ===\n");
+
+    do {
+    printf("Nume (doar litere, fara cifre): ");
+    scanf("%49s", cv.nume);
+    } while (!esteValidNumeSauPrenume(cv.nume));
+
+    do {
+    printf("Prenume (doar litere, fara cifre): ");
+    scanf("%49s", cv.prenume);
+    } while (!esteValidNumeSauPrenume(cv.prenume));
+
+
+
+    do {
+        printf("Telefon (doar cifre): ");
+        scanf("%19s", cv.telefon);
+
+        int valid = 1;
+        for (int i = 0; cv.telefon[i] != '\0'; i++) {
+            if (!isdigit(cv.telefon[i])) {
+                valid = 0;
+                break;
+            }
+        }
+
+        if (!valid) {
+            printf("Numar invalid! Introdu doar cifre.\n");
+        } else {
+            break;
+        }
+    } while (1);
+
+    getchar();
+    do {
+    printf("Experienta: ");
+    fgets(cv.experienta, sizeof(cv.experienta), stdin);
+    cv.experienta[strcspn(cv.experienta, "\n")] = 0;
+    } while (!esteTextValid(cv.experienta));
+
+
+    FILE *file = fopen("cvs.txt", "a");
+    if (!file) {
+        printf("Eroare la deschiderea fișierului!\n");
+        return;
+    }
+
+
+    fprintf(file, "Nume: %s\n", cv.nume);
+    fprintf(file, "Prenume: %s\n", cv.prenume);
+    fprintf(file, "Telefon: %s\n", cv.telefon);
+    fprintf(file, "Experienta: %s\n", cv.experienta);
+    fprintf(file, "=====\n");
+
+    fclose(file);
+
+    printf("CV-ul a fost salvat cu succes!\nApasa Enter pentru a continua...");
+    while (getchar() != '\n');
+    clearScreen();
+}
+
+
+void afiseazaCVs() {
+    clearScreen();
+    printf("=== Lista CVs ===\n");
+    FILE *file = fopen("cvs.txt", "r");
+    if (!file) {
+        printf("Nu exista CV-uri disponibile.\n");
+        printf("Apasati Enter pentru a continua...");
+        while (getchar() != '\n');
+        getchar();
+        clearScreen();
+        return;
+    }
+
+    char linie[MAX_LENGTH];
+    int index = 1;
+    int gasit = 0;
+
+    while (fgets(linie, sizeof(linie), file)) {
+        if (strncmp(linie, "Nume:", 5) == 0) {
+    printf("%d.\n", index++);
+
+    char eticheta[20], valoare[100];
+    if (sscanf(linie, "%[^:]: %[^\n]", eticheta, valoare) == 2)
+        printf(BLUE "Nume:" RESET " %s\n", valoare);
+    else
+        printf("%s", linie);
+
+    for (int i = 0; i < 3; i++) {
+        if (fgets(linie, sizeof(linie), file)) {
+            if (sscanf(linie, "%[^:]: %[^\n]", eticheta, valoare) == 2) {
+                if (strcmp(eticheta, "Prenume") == 0)
+                    printf(GREEN "Prenume:" RESET " %s\n", valoare);
+                else if (strcmp(eticheta, "Telefon") == 0)
+                    printf(YELLOW "Telefon:" RESET " %s\n", valoare);
+                else if (strcmp(eticheta, "Experienta") == 0)
+                    printf(RED "Experienta:" RESET " %s\n", valoare);
+                else
+                    printf("%s", linie);
+            } else {
+                printf("%s", linie);
+            }
+        }
+    }
+
+    gasit = 1;
+}
+
+        else if (strncmp(linie, "=====", 5) == 0) {
+            printf("----------------------\n");
+        }
+    }
+
+    fclose(file);
+
+    if (!gasit) {
+        printf("Nu exista CV-uri valide.\n");
+    }
+
+    printf("\nApasati Enter pentru a continua...");
+    while (getchar() != '\n');
+    getchar();
+    clearScreen();
+}
+
+
+
+void cautaCV() {
+    clearScreen();
+    char keyword[50];
+    printf("=== Cautarea CV dupa cuvant-cheie === \n");
+    scanf("%s", keyword);
+
+    clearScreen();
+    printf("=== Rezultate cautare ===\n");
+
+    FILE *file = fopen("cvs.txt", "r");
+    if (!file) {
+        printf("Nu exista CV-uri disponibile.\n");
+        printf("Apasati Enter pentru a continua...");
+        while (getchar() != '\n');
+        getchar();
+        clearScreen();
+        return;
+    }
+
+    char linie[MAX_LENGTH];
+    char cvBloc[5][MAX_LENGTH];
+    int gasit = 0;
+    int index = 1;
+
+    while (fgets(cvBloc[0], sizeof(cvBloc[0]), file)) {
+        for (int i = 1; i < 5; i++) {
+            fgets(cvBloc[i], sizeof(cvBloc[i]), file);
+        }
+
+
+        int match = 0;
+        for (int i = 0; i < 4; i++) {
+            if (strstr(cvBloc[i], keyword)) {
+                match = 1;
+                break;
+            }
+        }
+
+        if (match) {
+            printf("%d.\n", index++);
+            char eticheta[20], valoare[100];
+for (int i = 0; i < 4; i++) {
+    if (sscanf(cvBloc[i], "%[^:]: %[^\n]", eticheta, valoare) == 2) {
+        if (strcmp(eticheta, "Nume") == 0)
+            printf(BLUE "Nume:" RESET " %s\n", valoare);
+        else if (strcmp(eticheta, "Prenume") == 0)
+            printf(GREEN "Prenume:" RESET " %s\n", valoare);
+        else if (strcmp(eticheta, "Telefon") == 0)
+            printf(YELLOW "Telefon:" RESET " %s\n", valoare);
+        else if (strcmp(eticheta, "Experienta") == 0)
+            printf(RED "Experienta:" RESET " %s\n", valoare);
+        else
+            printf("%s", cvBloc[i]);
+    } else {
+        printf("%s", cvBloc[i]);
+    }
+}
+
+
+            printf("----------------------\n");
+            gasit = 1;
+        }
+    }
+
+    fclose(file);
+
+    if (!gasit) {
+        printf("Niciun rezultat gasit.\n");
+    }
+
+    printf("Apasati Enter pentru a continua...");
+    while (getchar() != '\n');
+    getchar();
+    clearScreen();
+}
+
+
+
+int main() {
+    int optiune;
+    do {
+        printf("=== Sistem retea socializare jobs ===\n");
+        printf("1. Adauga CV\n2. Afiseaza CV-uri\n3. Cauta CV\n4. Iesire\nOptiune: ");
+        scanf("%d", &optiune);
+        switch (optiune) {
+            case 1: adaugaCV(); break;
+            case 2: afiseazaCVs(); break;
+            case 3: cautaCV(); break;
+            case 4: clearScreen(); printf("Iesire.\n"); break;
+            default: clearScreen(); printf("Optiune invalida!\n\n");
+        }
+    } while (optiune != 4);
+    return 0;
+}
